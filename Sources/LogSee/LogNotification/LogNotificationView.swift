@@ -32,9 +32,12 @@ public extension LogNotificationView {
             ForEach(presenter.logs, id: \.id) { notification in
                 NotificationRow(log: notification)
                     .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
             }
         }
         .listStyle(.plain)
+        .listRowSeparator(.hidden)
         .scrollContentBackground(.hidden)
         .padding(.top, 50)
         .listRowBackground(Color.clear)

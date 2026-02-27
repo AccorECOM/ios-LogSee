@@ -102,6 +102,31 @@ await Logger.configure(channels: LogChannel.defaultChannels + [.analytics, .paym
 Logger.shared.log("Achat effectué", channel: .payment, level: .info)
 ```
 
+### Validation du payload analytics
+
+La librairie vous permet d'injecter votre propre stratégie de validation du payload :
+
+```swift
+Logger.setPayloadValidationProvider(channelID: "analytics_events") { log in
+    let expected = ["requiredFieldA", "requiredFieldB"]
+    let missing = expected.filter { key in
+        guard let value = log.env[key] as? String else { return true }
+        return value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    return Logger.Log.PayloadValidation(
+        eventIdentifier: log.message,
+        expectedKeys: expected,
+        missingKeys: missing
+    )
+}
+```
+
+Chaque log correspondant contient ensuite `log.payloadValidation` avec :
+- les clés attendues
+- les clés manquantes
+- le statut de complétude (`isComplete`)
+
 ## Interface de debug
 
 LogSee fournit deux composants UI pour le debug :

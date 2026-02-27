@@ -38,6 +38,17 @@ extension LogsView.LogRow {
                         .foregroundColor(.primary)
                         .lineLimit(isExpanded ? nil : 2)
                         .fixedSize(horizontal: false, vertical: true)
+
+                    if let payloadValidation = log.payloadValidation {
+                        Text(payloadValidation.isComplete ? "Payload complete" : "Missing \(payloadValidation.missingKeys.count) field(s)")
+                            .font(.caption2)
+                            .fontWeight(.semibold)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .foregroundColor(payloadValidation.isComplete ? .green : .orange)
+                            .background((payloadValidation.isComplete ? Color.green : Color.orange).opacity(0.12))
+                            .clipShape(Capsule())
+                    }
                 }
 
                 Spacer()

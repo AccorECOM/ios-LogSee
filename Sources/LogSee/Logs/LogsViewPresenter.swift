@@ -38,18 +38,30 @@ extension LogsView.Presenter: LogsInteractorOutput {
     }
 
     func setFiltres(_ filters: [LogChannel]) async {
-        self.filters = filters.sorted()
-        if let first = self.filters.first {
-            self.currentFilter = first
-        }
+        self.filters = mergedFilters(configuredFilters: filters, logFilters: Array(logs.keys))
+        ensureCurrentFilterIsValid()
     }
 
     func setHistory(_ logs: [LogChannel: [Logger.Log]]) {
         self.logs = logs
+        filters = mergedFilters(configuredFilters: filters, logFilters: Array(logs.keys))
+        ensureCurrentFilterIsValid()
     }
 
     func updateLiveStreamState(isEnabled: Bool, enabledChannels: [LogChannel]) async {
         self.liveStreamIsEnable = isEnabled
         self.enabledLiveStreamChannels = enabledChannels
+    }
+}
+
+private extension LogsView.Presenter {
+    func mergedFilters(configuredFilters: [LogChannel], logFilters: [LogChannel]) -> [LogChannel] {
+        Array(Set(configuredFilters).union(logFilters)).sorted()
+    }
+
+    func ensureCurrentFilterIsValid() {
+        if !filters.contains(currentFilter), let first = filters.first {
+            currentFilter = first
+        }
     }
 }

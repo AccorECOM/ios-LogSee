@@ -3,9 +3,23 @@ import Foundation
 import os
 
 public struct Logger: Sendable {
+    public struct PayloadValidationConfiguration: Sendable {
+        public let channelID: String?
+        public let provider: @Sendable (Logger.Log) -> Logger.Log.PayloadValidation?
+
+        public init(
+            channelID: String? = nil,
+            provider: @escaping @Sendable (Logger.Log) -> Logger.Log.PayloadValidation?
+        ) {
+            self.channelID = channelID
+            self.provider = provider
+        }
+    }
+
     private let logger: LoggerRegistable
     private let channelManager: ChannelManager
     private let subsystem: String
+    private let payloadValidationConfiguration: PayloadValidationConfiguration?
 
     public static var logStream: AsyncStream<Logger.Log> {
         LogPublisher.shared.getStream()
@@ -15,10 +29,12 @@ public struct Logger: Sendable {
 
     public init(logger: LoggerRegistable = LoggerRepository.shared,
                 channelManager: ChannelManager = ChannelManager(),
-                subsystem: String = "com.LogSee.logs") {
+                subsystem: String = "com.LogSee.logs",
+                payloadValidationConfiguration: PayloadValidationConfiguration? = nil) {
         self.logger = logger
         self.channelManager = channelManager
         self.subsystem = subsystem
+        self.payloadValidationConfiguration = payloadValidationConfiguration
     }
 
     /// Configure the logger with available channels
@@ -49,19 +65,32 @@ public struct Logger: Sendable {
 
     public func log(_ log: Logger.Log) {
         #if DEBUG
-        let timestamp = Date().formatted(date: .numeric, time: .standard)
-        let logMessage = "[\(log.channel.title.uppercased())] [\(timestamp)] \(log.message)"
+        Task { [logger, subsystem, payloadValidationConfiguration] in
+            let payloadValidation = Self.resolvePayloadValidation(
+                for: log,
+                configuration: payloadValidationConfiguration
+            )
+            let validatedLog = Logger.Log(
+                id: log.id,
+                message: log.message,
+                channel: log.channel,
+                env: log.env,
+                level: log.level,
+                date: log.date,
+                payloadValidation: payloadValidation ?? log.payloadValidation
+            )
+            let timestamp = Date().formatted(date: .numeric, time: .standard)
+            let logMessage = "[\(validatedLog.channel.title.uppercased())] [\(timestamp)] \(validatedLog.message)"
 
-        // 🖥 Print to os.Logger (Xcode console with filters)
-        os.Logger(subsystem: subsystem, category: log.channel.title)
-            .log("\(logMessage, privacy: .public)")
+            // 🖥 Print to os.Logger (Xcode console with filters)
+            os.Logger(subsystem: subsystem, category: validatedLog.channel.title)
+                .log("\(logMessage, privacy: .public)")
 
-        // 📦 Store in repository
-        Task { [logger] in
-            await logger.add(log)
+            // 📦 Store in repository
+            await logger.add(validatedLog)
+
+            LogPublisher.shared.send(validatedLog)
         }
-
-        LogPublisher.shared.send(log)
         #endif
     }
 
@@ -85,5 +114,18 @@ public struct Logger: Sendable {
         #if DEBUG
         await logger.clear(for: channel)
         #endif
+    }
+}
+
+private extension Logger {
+    static func resolvePayloadValidation(
+        for log: Logger.Log,
+        configuration: PayloadValidationConfiguration?
+    ) -> Logger.Log.PayloadValidation? {
+        guard let configuration else { return nil }
+        if let channelID = configuration.channelID, channelID != log.channel.id {
+            return nil
+        }
+        return configuration.provider(log)
     }
 }

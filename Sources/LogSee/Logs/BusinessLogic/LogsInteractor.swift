@@ -29,7 +29,7 @@ extension LogsView.Interactor: LogsInteractorInput {
 
     func retrieve() async {
         let data = await logger.getAll()
-        await output.setFiltres(Logger.channels())
+        await output.setFiltres(Array(data.keys))
         await output.setHistory(data)
 
         await updateLiveStreamState()

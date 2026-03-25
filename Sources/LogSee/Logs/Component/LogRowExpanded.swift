@@ -22,6 +22,12 @@ extension LogsView.LogRow {
                 }
                 .padding(.horizontal, 16)
 
+                if let payloadValidation = log.payloadValidation {
+                    payloadValidationSection(payloadValidation)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                }
+
                 // Environment variables section
                 if !log.env.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
@@ -63,6 +69,39 @@ extension LogsView.LogRow.Expanded {
                 .background(Color.gray.opacity(0.1))
                 .cornerRadius(6)
                 .padding(.bottom, 4)
+            }
+        }
+    }
+
+    @ViewBuilder
+    func payloadValidationSection(_ payloadValidation: Logger.Log.PayloadValidation) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Payload Validation")
+                .font(.headline)
+                .foregroundColor(.primary)
+
+            HStack {
+                Text("Status")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+
+                Text(payloadValidation.isComplete ? "Complete" : "Incomplete")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(payloadValidation.isComplete ? .green : .orange)
+            }
+
+            if !payloadValidation.missingKeys.isEmpty {
+                Text("Missing fields")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+
+                ForEach(payloadValidation.missingKeys, id: \.self) { key in
+                    Text(key)
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundColor(.orange)
+                        .padding(.vertical, 2)
+                }
             }
         }
     }

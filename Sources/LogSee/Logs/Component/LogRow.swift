@@ -26,7 +26,7 @@ extension LogsView {
             }
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white)
+                    .fill(.regularMaterial)
                     .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
             )
             .overlay(
@@ -35,7 +35,7 @@ extension LogsView {
             )
             .animation(.easeInOut(duration: 0.2), value: isExpanded)
             .padding(.horizontal, 16)
-            .padding(.vertical, 6)
+            .padding(.vertical, 2)
         }
     }
 }

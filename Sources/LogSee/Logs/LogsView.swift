@@ -33,6 +33,7 @@ public extension LogsView {
                 .padding(.vertical, 8)
             }
         }
+        .background(.background)
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 HStack(spacing: 16) {
@@ -89,7 +90,7 @@ public extension LogsView {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
-        .background(Color.white)
+        .background(.background)
     }
 
     private func filterButton(for filter: LogChannel) -> some View {

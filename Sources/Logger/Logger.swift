@@ -3,10 +3,23 @@ import Foundation
 import os
 
 public struct Logger: Sendable {
+    public struct PayloadValidationConfiguration: Sendable {
+        public let channelID: String?
+        public let provider: @Sendable (Logger.Log) -> Logger.Log.PayloadValidation?
+
+        public init(
+            channelID: String? = nil,
+            provider: @escaping @Sendable (Logger.Log) -> Logger.Log.PayloadValidation?
+        ) {
+            self.channelID = channelID
+            self.provider = provider
+        }
+    }
+
     private let logger: LoggerRegistable
     private let channelManager: ChannelManager
     private let subsystem: String
-    private static let payloadValidationProviderStore = PayloadValidationProviderStore()
+    private let payloadValidationConfiguration: PayloadValidationConfiguration?
 
     public static var logStream: AsyncStream<Logger.Log> {
         LogPublisher.shared.getStream()
@@ -16,10 +29,12 @@ public struct Logger: Sendable {
 
     public init(logger: LoggerRegistable = LoggerRepository.shared,
                 channelManager: ChannelManager = ChannelManager(),
-                subsystem: String = "com.LogSee.logs") {
+                subsystem: String = "com.LogSee.logs",
+                payloadValidationConfiguration: PayloadValidationConfiguration? = nil) {
         self.logger = logger
         self.channelManager = channelManager
         self.subsystem = subsystem
+        self.payloadValidationConfiguration = payloadValidationConfiguration
     }
 
     /// Configure the logger with available channels
@@ -38,23 +53,6 @@ public struct Logger: Sendable {
         await shared.channelManager.getChannel(id: id)
     }
 
-    /// Sets the payload validation provider.
-    /// This closure is called for matching logs before persistence/publication.
-    /// - Parameters:
-    ///   - channelID: Optional channel filter. When set, only logs matching this channel ID are validated.
-    ///   - provider: Validation closure.
-    public static func setPayloadValidationProvider(
-        channelID: String? = nil,
-        _ provider: @escaping @Sendable (Logger.Log) -> Logger.Log.PayloadValidation?
-    ) async {
-        await payloadValidationProviderStore.set(channelID: channelID, provider: provider)
-    }
-
-    /// Clears the payload validation provider.
-    public static func clearPayloadValidationProvider() async {
-        await payloadValidationProviderStore.clear()
-    }
-
     public func log(
         _ message: String,
         channel: LogChannel,
@@ -67,8 +65,11 @@ public struct Logger: Sendable {
 
     public func log(_ log: Logger.Log) {
         #if DEBUG
-        Task { [logger, subsystem] in
-            let payloadValidation = await Self.resolvePayloadValidation(for: log)
+        Task { [logger, subsystem, payloadValidationConfiguration] in
+            let payloadValidation = Self.resolvePayloadValidation(
+                for: log,
+                configuration: payloadValidationConfiguration
+            )
             let validatedLog = Logger.Log(
                 id: log.id,
                 message: log.message,
@@ -117,35 +118,14 @@ public struct Logger: Sendable {
 }
 
 private extension Logger {
-    static func resolvePayloadValidation(for log: Logger.Log) async -> Logger.Log.PayloadValidation? {
-        guard let entry = await payloadValidationProviderStore.get() else { return nil }
-        if let channelID = entry.channelID, channelID != log.channel.id {
+    static func resolvePayloadValidation(
+        for log: Logger.Log,
+        configuration: PayloadValidationConfiguration?
+    ) -> Logger.Log.PayloadValidation? {
+        guard let configuration else { return nil }
+        if let channelID = configuration.channelID, channelID != log.channel.id {
             return nil
         }
-        return entry.provider(log)
-    }
-}
-
-private actor PayloadValidationProviderStore {
-    typealias Entry = (
-        channelID: String?,
-        provider: @Sendable (Logger.Log) -> Logger.Log.PayloadValidation?
-    )
-
-    private var entry: Entry?
-
-    func set(
-        channelID: String?,
-        provider: @escaping @Sendable (Logger.Log) -> Logger.Log.PayloadValidation?
-    ) {
-        entry = (channelID: channelID, provider: provider)
-    }
-
-    func clear() {
-        entry = nil
-    }
-
-    func get() -> Entry? {
-        entry
+        return configuration.provider(log)
     }
 }

@@ -2,25 +2,6 @@ import Foundation
 
 extension Logger {
     public struct Log: Identifiable, Sendable {
-        public struct PayloadValidation: Sendable, Equatable {
-            public let eventIdentifier: String
-            public let expectedKeys: [String]
-            public let missingKeys: [String]
-
-            public var isComplete: Bool {
-                missingKeys.isEmpty
-            }
-
-            public init(
-                eventIdentifier: String,
-                expectedKeys: [String],
-                missingKeys: [String]
-            ) {
-                self.eventIdentifier = eventIdentifier
-                self.expectedKeys = expectedKeys
-                self.missingKeys = missingKeys
-            }
-        }
 
         public let id: UUID
         public let level: Level
@@ -46,6 +27,28 @@ extension Logger {
             self.env = env
             self.level = level
             self.payloadValidation = payloadValidation
+        }
+    }
+}
+
+extension Logger.Log {
+    public struct PayloadValidation: Sendable, Equatable {
+        public let eventIdentifier: String
+        public let expectedKeys: [String]
+        public let missingKeys: [String]
+
+        public var isComplete: Bool {
+            missingKeys.isEmpty
+        }
+
+        public init(
+            eventIdentifier: String,
+            expectedKeys: [String],
+            missingKeys: [String]
+        ) {
+            self.eventIdentifier = eventIdentifier
+            self.expectedKeys = expectedKeys
+            self.missingKeys = missingKeys
         }
     }
 }

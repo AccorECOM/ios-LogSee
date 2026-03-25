@@ -2,7 +2,6 @@ import Foundation
 @testable import Logger
 import Testing
 
-@Suite(.serialized)
 struct PayloadValidationTests {
     private var analyticsChannel: LogChannel {
         LogChannel(id: "analytics_events", title: "Analytics: Events", emoji: "📊")
@@ -28,12 +27,19 @@ struct PayloadValidationTests {
         }
     }
 
+    private func makeLogger() -> Logger {
+        Logger(
+            logger: LoggerRepository(),
+            payloadValidationConfiguration: Logger.PayloadValidationConfiguration(
+                channelID: analyticsChannel.id,
+                provider: payloadValidationProvider
+            )
+        )
+    }
+
     @Test("Payload validation marks analytics event as incomplete when expected keys are missing")
     func eventPayloadIsFlaggedAsIncompleteWhenMissingKeys() async throws {
-        await Logger.clearPayloadValidationProvider()
-        await Logger.setPayloadValidationProvider(channelID: analyticsChannel.id, payloadValidationProvider)
-
-        let logger = Logger(logger: LoggerRepository())
+        let logger = makeLogger()
         logger.log(
             Logger.Log(
                 message: "eventSample",
@@ -52,15 +58,11 @@ struct PayloadValidationTests {
         #expect(logs[0].payloadValidation?.isComplete == false)
         #expect(logs[0].payloadValidation?.missingKeys == ["requiredFieldB"])
         #expect(logs[0].payloadValidation?.expectedKeys == ["requiredFieldA", "requiredFieldB"])
-        await Logger.clearPayloadValidationProvider()
     }
 
     @Test("Payload validation marks analytics event as complete when all expected keys are present")
     func eventPayloadIsMarkedAsCompleteWhenNoKeyIsMissing() async throws {
-        await Logger.clearPayloadValidationProvider()
-        await Logger.setPayloadValidationProvider(channelID: analyticsChannel.id, payloadValidationProvider)
-
-        let logger = Logger(logger: LoggerRepository())
+        let logger = makeLogger()
         logger.log(
             Logger.Log(
                 message: "eventSample",
@@ -79,15 +81,11 @@ struct PayloadValidationTests {
         #expect(logs.count == 1)
         #expect(logs[0].payloadValidation?.isComplete == true)
         #expect(logs[0].payloadValidation?.missingKeys.isEmpty == true)
-        await Logger.clearPayloadValidationProvider()
     }
 
     @Test("Payload validation ignores channels that are not configured")
     func payloadValidationCanBeScopedToSpecificChannels() async throws {
-        await Logger.clearPayloadValidationProvider()
-        await Logger.setPayloadValidationProvider(channelID: analyticsChannel.id, payloadValidationProvider)
-
-        let logger = Logger(logger: LoggerRepository())
+        let logger = makeLogger()
         let otherChannel = LogChannel(id: "analytics_other", title: "Analytics: Other", emoji: "📊")
         logger.log(
             Logger.Log(
@@ -104,6 +102,5 @@ struct PayloadValidationTests {
 
         #expect(logs.count == 1)
         #expect(logs[0].payloadValidation == nil)
-        await Logger.clearPayloadValidationProvider()
     }
 }

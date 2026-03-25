@@ -92,4 +92,19 @@ struct LogsViewBusinessLogicTests {
         #expect(log.env["errorCode"] as? Int == 401)
         #expect(log.date.timeIntervalSinceNow < 1) // Log was created recently
     }
+
+    @Test("When logs include custom channels, filters include these channels")
+    func testFiltersIncludeCustomChannelsFromHistory() async {
+        // Given
+        let presenter = LogsView.Presenter()
+        let customChannel = LogChannel(id: "analytics_events", title: "Analytics: Events", emoji: "📊")
+
+        // When
+        await presenter.setFiltres([.network, .error])
+        presenter.setHistory([customChannel: [Logger.Log(message: "evt", channel: customChannel)]])
+
+        // Then
+        #expect(presenter.filters.contains(customChannel))
+        #expect(presenter.currentFilter == customChannel || presenter.currentFilter == .error || presenter.currentFilter == .network)
+    }
 }

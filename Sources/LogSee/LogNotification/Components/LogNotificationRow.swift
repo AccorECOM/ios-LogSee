@@ -24,6 +24,16 @@ extension LogNotificationView {
                         .font(.system(size: 13))
                         .foregroundColor(.primary)
                         .lineLimit(2)
+
+                    if let payloadValidation = log.payloadValidation, !payloadValidation.isComplete {
+                        Label("Missing \(payloadValidation.missingKeys.count) field(s)", systemImage: "exclamationmark.triangle.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.orange)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.orange.opacity(0.12))
+                            .clipShape(Capsule())
+                    }
                 }
 
                 Spacer()
